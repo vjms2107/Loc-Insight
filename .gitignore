@@ -1,0 +1,11 @@
+
+# Ignore backend node_modules and lock file
+backend/node_modules/
+backend/package-lock.json
+
+# Ignore frontend node_modules and lock file
+frontend/node_modules/
+frontend/package-lock.json
+
+# Ignore backend .env
+backend/.env

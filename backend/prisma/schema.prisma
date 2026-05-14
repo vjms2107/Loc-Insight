@@ -8,13 +8,38 @@ datasource db {
 }
 
 model Equipment {
-  id          Int      @id @default(autoincrement())
-  nome        String
-  descricao   String
-  categoria   String
-  status      String
-  imagemUrl   String?
-  manualPdf   String?
-  createdAt   DateTime @default(now())
+  id             Int           @id @default(autoincrement())
+  nome           String
+  descricao      String
+  categoria      String
+  status         String
+  imagemUrl      String?
+  manualPdf      String?
+  proximaRevisao DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  maintenances   Maintenance[]
 }
 
+model User {
+  id        Int      @id @default(autoincrement())
+  nome      String
+  email     String   @unique
+  telefone  String?
+  senha     String
+  tipo      String   @default("CLIENTE") // ADMIN | CLIENTE
+  pontos    Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Maintenance {
+  id            Int       @id @default(autoincrement())
+  equipamentoId Int
+  descricao     String
+  custo         Float
+  pecasTrocadas String?
+  equipment     Equipment @relation(fields: [equipamentoId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}

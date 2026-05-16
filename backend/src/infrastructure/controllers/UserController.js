@@ -1,10 +1,12 @@
 const GetUserByEmail = require('../../application/use-cases/GetUserByEmail');
 const RedeemPoints = require('../../application/use-cases/RedeemPoints');
+const Login = require('../../application/use-cases/Login');
 const PrismaUserRepository = require('../repositories/PrismaUserRepository');
 
 const userRepository = new PrismaUserRepository();
 const getUserByEmailUseCase = new GetUserByEmail(userRepository);
 const redeemPointsUseCase = new RedeemPoints(userRepository);
+const loginUseCase = new Login(userRepository);
 
 class UserController {
   async getPoints(req, res) {
@@ -30,6 +32,20 @@ class UserController {
       return res.json(result);
     } catch (error) {
       return res.status(400).json({ error: error.message });
+    }
+  }
+
+  async login(req, res) {
+    try {
+      const { email, senha } = req.body;
+      if (!email || !senha) {
+        return res.status(400).json({ error: 'E-mail e senha são obrigatórios.' });
+      }
+
+      const user = await loginUseCase.execute(email, senha);
+      return res.json(user);
+    } catch (error) {
+      return res.status(401).json({ error: error.message });
     }
   }
 }

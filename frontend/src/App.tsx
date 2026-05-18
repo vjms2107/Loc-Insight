@@ -5,7 +5,7 @@ import EquipmentCatalog from './components/EquipmentCatalog'
 import ManualsCenter from './components/ManualsCenter'
 import PointsConsultation from './components/PointsConsultation'
 import Login from './components/Login'
-import logo from './assets/logo.png'
+import logo from './assets/Gemini_Generated_Image_bsc36kbsc36kbsc3-removebg-preview.png'
 import './App.css'
 
 function App() {
@@ -84,7 +84,7 @@ function App() {
           <div className="logo">
             <img src={logo} alt="Loc Insight" className="logo-img" />
           </div>
-          
+
           <nav className="nav">
             {user.role === 'admin' && (
               <button

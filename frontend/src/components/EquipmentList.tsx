@@ -10,6 +10,7 @@ interface Equipment {
   imagemUrl: string | null;
   manualPdf: string | null;
   proximaRevisao: string | null;
+  descricao?: string;
 }
 
 const EquipmentList: React.FC = () => {
@@ -22,6 +23,18 @@ const EquipmentList: React.FC = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [showReturn, setShowReturn] = useState(false);
+
+  // States for Editing
+  const [selectedEdit, setSelectedEdit] = useState<Equipment | null>(null);
+  const [editNome, setEditNome] = useState('');
+  const [editCategoria, setEditCategoria] = useState('');
+  const [editDescricao, setEditDescricao] = useState('');
+  const [editStatus, setEditStatus] = useState('');
+  const [editRevisao, setEditRevisao] = useState('');
+  const [editImagem, setEditImagem] = useState<File | null>(null);
+  const [editManual, setEditManual] = useState<File | null>(null);
+  const [editError, setEditError] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const fetchEquipments = async () => {
     try {
@@ -94,6 +107,85 @@ Qualquer dúvida, consulte o manual ou nos chame aqui!`;
     setShowHistory(true);
   };
 
+  const handleOpenEdit = (eq: Equipment) => {
+    setSelectedEdit(eq);
+    setEditNome(eq.nome);
+    setEditCategoria(eq.categoria);
+    setEditDescricao(eq.descricao || '');
+    setEditStatus(eq.status);
+    setEditRevisao(eq.proximaRevisao ? new Date(eq.proximaRevisao).toISOString().split('T')[0] : '');
+    setEditImagem(null);
+    setEditManual(null);
+    setEditError('');
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!window.confirm('Tem certeza que deseja excluir este equipamento do inventário?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:3000/equipments/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setEquipments(prev => prev.filter(eq => eq.id !== id));
+      } else {
+        const data = await response.json();
+        alert(data.error || 'Erro ao excluir equipamento');
+      }
+    } catch (error) {
+      console.error('Erro ao excluir equipamento:', error);
+      alert('Erro de conexão ao excluir equipamento');
+    }
+  };
+
+  const handleUpdateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedEdit) return;
+    setIsUpdating(true);
+    setEditError('');
+
+    const formData = new FormData();
+    formData.append('nome', editNome);
+    formData.append('categoria', editCategoria);
+    formData.append('descricao', editDescricao);
+    formData.append('status', editStatus);
+    if (editRevisao) {
+      formData.append('proximaRevisao', new Date(editRevisao).toISOString());
+    } else {
+      formData.append('proximaRevisao', '');
+    }
+
+    if (editImagem) {
+      formData.append('imagem', editImagem);
+    }
+    if (editManual) {
+      formData.append('manual', editManual);
+    }
+
+    try {
+      const response = await fetch(`http://localhost:3000/equipments/${selectedEdit.id}`, {
+        method: 'PUT',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao atualizar equipamento');
+      }
+
+      fetchEquipments();
+      setSelectedEdit(null);
+    } catch (err: any) {
+      setEditError(err.message);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Disponível': return '#22c55e';
@@ -151,7 +243,7 @@ Qualquer dúvida, consulte o manual ou nos chame aqui!`;
                   </span>
                 </td>
                 <td style={{ padding: '1rem' }}>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
                     <select value={eq.status} onChange={(e) => handleStatusChange(eq.id, e.target.value)} style={{ padding: '0.4rem', fontSize: '0.8rem' }}>
                       <option value="Disponível">Disponível</option>
                       <option value="Alugado">Alugado</option>
@@ -169,6 +261,10 @@ Qualquer dúvida, consulte o manual ou nos chame aqui!`;
                     )}
 
                     <button onClick={() => handleOpenHistory(eq.id)} className="btn-secondary" style={{ padding: '0.4rem 0.6rem', fontSize: '0.75rem' }} title="Manutenção">🛠️</button>
+                    
+                    <button onClick={() => handleOpenEdit(eq)} className="btn-secondary" style={{ padding: '0.4rem 0.6rem', fontSize: '0.75rem', background: '#fef3c7', color: '#d97706' }} title="Editar">✏️</button>
+                    
+                    <button onClick={() => handleDelete(eq.id)} className="btn-secondary" style={{ padding: '0.4rem 0.6rem', fontSize: '0.75rem', background: '#fee2e2', color: '#dc2626' }} title="Excluir">🗑️</button>
                   </div>
                 </td>
               </tr>
@@ -238,6 +334,116 @@ Qualquer dúvida, consulte o manual ou nos chame aqui!`;
               onSuccess={() => { setShowReturn(false); fetchEquipments(); }}
               onCancel={() => setShowReturn(false)}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Modal Editar Equipamento */}
+      {selectedEdit && (
+        <div className="modal-overlay" onClick={() => setSelectedEdit(null)}>
+          <div className="card modal-content" style={{ maxWidth: '500px', textAlign: 'left' }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ marginBottom: '1.5rem', color: 'var(--primary-blue)', fontWeight: 700 }}>Editar Equipamento</h3>
+            
+            <form onSubmit={handleUpdateSubmit}>
+              {editError && <div className="error-message" style={{ marginBottom: '1rem' }}>{editError}</div>}
+              
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label>Nome do Equipamento</label>
+                <input 
+                  type="text" 
+                  value={editNome} 
+                  onChange={e => setEditNome(e.target.value)} 
+                  required 
+                  style={{ width: '100%' }}
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label>Categoria</label>
+                <input 
+                  type="text" 
+                  value={editCategoria} 
+                  onChange={e => setEditCategoria(e.target.value)} 
+                  required 
+                  style={{ width: '100%' }}
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label>Descrição</label>
+                <textarea 
+                  value={editDescricao} 
+                  onChange={e => setEditDescricao(e.target.value)} 
+                  required 
+                  rows={3}
+                  style={{ 
+                    width: '100%', 
+                    padding: '0.75rem', 
+                    borderRadius: 'var(--radius-sm)', 
+                    border: '1px solid var(--gray-300)',
+                    fontFamily: 'inherit'
+                  }}
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label>Status</label>
+                <select 
+                  value={editStatus} 
+                  onChange={e => setEditStatus(e.target.value)}
+                  style={{ 
+                    width: '100%', 
+                    padding: '0.75rem', 
+                    borderRadius: 'var(--radius-sm)', 
+                    border: '1px solid var(--gray-300)',
+                    backgroundColor: 'white'
+                  }}
+                >
+                  <option value="Disponível">Disponível</option>
+                  <option value="Alugado">Alugado</option>
+                  <option value="Manutenção">Manutenção</option>
+                </select>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label>Próxima Revisão</label>
+                <input 
+                  type="date" 
+                  value={editRevisao} 
+                  onChange={e => setEditRevisao(e.target.value)} 
+                  style={{ width: '100%' }}
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label>Nova Imagem (Opcional)</label>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={e => setEditImagem(e.target.files ? e.target.files[0] : null)} 
+                  style={{ width: '100%', border: 'none', padding: 0 }}
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                <label>Novo Manual PDF (Opcional)</label>
+                <input 
+                  type="file" 
+                  accept="application/pdf" 
+                  onChange={e => setEditManual(e.target.files ? e.target.files[0] : null)} 
+                  style={{ width: '100%', border: 'none', padding: 0 }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <button type="submit" className="btn-primary" style={{ flex: 1 }} disabled={isUpdating}>
+                  {isUpdating ? 'Salvando...' : 'Salvar Alterações'}
+                </button>
+                <button type="button" onClick={() => setSelectedEdit(null)} className="btn-secondary" style={{ padding: '0.85rem 1.5rem' }}>
+                  Cancelar
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

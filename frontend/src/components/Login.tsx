@@ -1,12 +1,12 @@
 import logo from '../assets/logo.png';
-
 import { useState } from 'react';
 
 interface LoginProps {
   onLogin: (user: any) => void;
+  onCancel?: () => void;
 }
 
-const Login: React.FC<LoginProps> = ({ onLogin }) => {
+const Login: React.FC<LoginProps> = ({ onLogin, onCancel }) => {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [error, setError] = useState('');
@@ -18,7 +18,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:3000/users/login', {
+      const response = await fetch('http://localhost:3000/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -29,9 +29,11 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Erro ao fazer login');
+        throw new Error(data.error || 'Erro ao processar requisição');
       }
 
+      // data contains { token, id, nome, email, role, pontos }
+      localStorage.setItem('loc_insight_token', data.token);
       onLogin(data);
     } catch (err: any) {
       setError(err.message);
@@ -83,9 +85,31 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           </button>
         </form>
 
+        <div style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.9rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {onCancel && (
+            <button 
+              type="button" 
+              onClick={onCancel}
+              style={{ 
+                background: 'none', 
+                border: 'none', 
+                color: 'var(--gray-600)', 
+                cursor: 'pointer', 
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                textDecoration: 'none',
+                marginTop: '0.5rem'
+              }}
+            >
+              ← Voltar ao Catálogo
+            </button>
+          )}
+        </div>
+
         <div className="login-footer">
-          <p>Testes: admin@locinsight.com / admin123</p>
-          <p>cliente@gmail.com / cliente123</p>
+          <p style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>Acessos para Teste:</p>
+          <p>Admin: admin@locinsight.com / admin123</p>
+          <p>Cliente: cliente@gmail.com / cliente123</p>
         </div>
       </div>
     </div>

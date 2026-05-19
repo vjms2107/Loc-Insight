@@ -8,15 +8,15 @@ datasource db {
 }
 
 model Equipment {
-  id              Int       @id @default(autoincrement())
-  nome            String
-  descricao       String
-  categoria       String
-  status          String
-  imagemUrl       String?
-  manualPdf       String?
-  proximaRevisao  DateTime?
-  createdAt       DateTime  @default(now())
+  id             Int       @id @default(autoincrement())
+  nome           String
+  descricao      String
+  categoria      String
+  status         String
+  imagemUrl      String?
+  manualPdf      String?
+  createdAt      DateTime  @default(now())
+  proximaRevisao DateTime?
 }
 
 model User {
@@ -24,7 +24,7 @@ model User {
   email     String   @unique
   senha     String
   nome      String
-  role      String   @default("cliente") // "admin" ou "cliente"
+  role      String   @default("CLIENT")
   pontos    Int      @default(0)
   createdAt DateTime @default(now())
 }

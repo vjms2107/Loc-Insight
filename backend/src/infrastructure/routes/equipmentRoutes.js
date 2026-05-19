@@ -24,4 +24,13 @@ router.patch('/:id/status', EquipmentController.updateStatus);
 // POST /equipments/return - Processar devolução (PB12/PB13)
 router.post('/return', EquipmentController.returnEquipment);
 
+// PUT /equipments/:id - Atualização de equipamento
+router.put('/:id', upload.fields([
+  { name: 'imagem', maxCount: 1 },
+  { name: 'manual', maxCount: 1 }
+]), EquipmentController.update);
+
+// DELETE /equipments/:id - Exclusão de equipamento
+router.delete('/:id', EquipmentController.delete);
+
 module.exports = router;

@@ -1,4 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 
 async function main() {
@@ -12,9 +13,9 @@ async function main() {
   const admin = await prisma.user.create({
     data: {
       email: 'admin@locinsight.com',
-      senha: 'admin123', // Em produção, usar hash!
+      senha: bcrypt.hashSync('admin123', 10),
       nome: 'Administrador Loc Insight',
-      role: 'admin',
+      role: 'ADMIN',
       pontos: 0,
     },
   });
@@ -22,9 +23,9 @@ async function main() {
   const cliente = await prisma.user.create({
     data: {
       email: 'cliente@gmail.com',
-      senha: 'cliente123',
+      senha: bcrypt.hashSync('cliente123', 10),
       nome: 'João da Silva',
-      role: 'cliente',
+      role: 'CLIENT',
       pontos: 150,
     },
   });

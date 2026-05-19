@@ -4,12 +4,14 @@ import EquipmentList from './components/EquipmentList'
 import EquipmentCatalog from './components/EquipmentCatalog'
 import ManualsCenter from './components/ManualsCenter'
 import PointsConsultation from './components/PointsConsultation'
+import UserRegistrationForm from './components/UserRegistrationForm'
 import Login from './components/Login'
 import logo from './assets/Gemini_Generated_Image_bsc36kbsc36kbsc3-removebg-preview.png'
 import './App.css'
 
 function App() {
   const [user, setUser] = useState<any>(null);
+  const [showLogin, setShowLogin] = useState(false);
   const [stats, setStats] = useState({ 'Disponível': 0, 'Alugado': 0, 'Manutenção': 0 });
   const [equipments, setEquipments] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'admin' | 'catalog' | 'manuals' | 'points'>('catalog');
@@ -40,14 +42,19 @@ function App() {
   useEffect(() => {
     const savedUser = localStorage.getItem('loc_insight_user');
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
+      const parsedUser = JSON.parse(savedUser);
+      setUser(parsedUser);
+      if (parsedUser.role === 'ADMIN') {
+        setActiveTab('admin');
+      }
     }
   }, []);
 
   const handleLogin = (loggedUser: any) => {
     setUser(loggedUser);
+    setShowLogin(false);
     localStorage.setItem('loc_insight_user', JSON.stringify(loggedUser));
-    if (loggedUser.role === 'admin') {
+    if (loggedUser.role === 'ADMIN') {
       setActiveTab('admin');
     } else {
       setActiveTab('catalog');
@@ -57,6 +64,7 @@ function App() {
   const handleLogout = () => {
     setUser(null);
     localStorage.removeItem('loc_insight_user');
+    localStorage.removeItem('loc_insight_token');
     setActiveTab('catalog');
   };
 
@@ -73,8 +81,8 @@ function App() {
     return diffDays <= 7;
   });
 
-  if (!user) {
-    return <Login onLogin={handleLogin} />;
+  if (showLogin && !user) {
+    return <Login onLogin={handleLogin} onCancel={() => setShowLogin(false)} />;
   }
 
   return (
@@ -86,7 +94,7 @@ function App() {
           </div>
 
           <nav className="nav">
-            {user.role === 'admin' && (
+            {user && user.role === 'ADMIN' && (
               <button
                 className={`nav-btn ${activeTab === 'admin' ? 'active' : ''}`}
                 onClick={() => setActiveTab('admin')}
@@ -100,32 +108,58 @@ function App() {
             >
               Catálogo
             </button>
-            <button
-              className={`nav-btn ${activeTab === 'manuals' ? 'active' : ''}`}
-              onClick={() => setActiveTab('manuals')}
-            >
-              Manuais
-            </button>
-            <button
-              className={`nav-btn ${activeTab === 'points' ? 'active' : ''}`}
-              onClick={() => setActiveTab('points')}
-            >
-              Fidelidade
-            </button>
+            {user && (
+              <>
+                <button
+                  className={`nav-btn ${activeTab === 'manuals' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('manuals')}
+                >
+                  Manuais
+                </button>
+                <button
+                  className={`nav-btn ${activeTab === 'points' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('points')}
+                >
+                  Fidelidade
+                </button>
+              </>
+            )}
           </nav>
 
-          <div className="user-profile">
-            <div className="user-info">
-              <span className="user-name">{user.nome}</span>
-              <span className="user-role">{user.role}</span>
+          {user ? (
+            <div className="user-profile">
+              <div className="user-info">
+                <span className="user-name">{user.nome}</span>
+                <span className="user-role">{user.role}</span>
+              </div>
+              <button onClick={handleLogout} className="logout-btn">Sair</button>
             </div>
-            <button onClick={handleLogout} className="logout-btn">Sair</button>
-          </div>
+          ) : (
+            <button 
+              onClick={() => setShowLogin(true)} 
+              className="login-nav-btn"
+              style={{
+                padding: '0.5rem 1.25rem',
+                backgroundColor: 'var(--primary-orange)',
+                color: 'white',
+                borderRadius: 'var(--radius-sm)',
+                fontWeight: 700,
+                fontSize: '0.9rem',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.filter = 'brightness(1.1)')}
+              onMouseLeave={(e) => (e.currentTarget.style.filter = 'none')}
+            >
+              Entrar
+            </button>
+          )}
         </div>
       </header>
 
       <main className="main-content container">
-        {activeTab === 'admin' && user.role === 'admin' && (
+        {activeTab === 'admin' && user && user.role === 'ADMIN' && (
           <>
             <div className="page-header">
               <h1>Painel de Gestão</h1>
@@ -135,6 +169,10 @@ function App() {
             <div className="content-grid">
               <div className="form-section">
                 <EquipmentForm />
+
+                <div style={{ marginTop: '2rem' }}>
+                  <UserRegistrationForm />
+                </div>
 
                 {alerts.length > 0 && (
                   <div className="card" style={{ marginTop: '2rem', borderLeft: '4px solid var(--danger)' }}>
@@ -206,9 +244,9 @@ function App() {
           </>
         )}
 
-        {activeTab === 'manuals' && <ManualsCenter />}
+        {activeTab === 'manuals' && user && <ManualsCenter />}
 
-        {activeTab === 'points' && <PointsConsultation />}
+        {activeTab === 'points' && user && <PointsConsultation />}
       </main>
 
       <footer className="footer">

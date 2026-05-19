@@ -1,3 +1,5 @@
+const bcrypt = require('bcryptjs');
+
 class Login {
   constructor(userRepository) {
     this.userRepository = userRepository;
@@ -10,8 +12,8 @@ class Login {
       throw new Error('Usuário não encontrado.');
     }
 
-    // Em produção, usar bcrypt para comparar hashes!
-    if (user.senha !== password) {
+    const passwordMatch = await bcrypt.compare(password, user.senha);
+    if (!passwordMatch) {
       throw new Error('Senha incorreta.');
     }
 

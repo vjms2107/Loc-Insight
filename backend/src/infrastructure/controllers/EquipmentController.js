@@ -3,6 +3,8 @@ const UpdateEquipmentStatus = require('../../application/use-cases/UpdateEquipme
 const GetEquipmentStats = require('../../application/use-cases/GetEquipmentStats');
 const GenerateEquipmentQRCode = require('../../application/use-cases/GenerateEquipmentQRCode');
 const ProcessEquipmentReturn = require('../../application/use-cases/ProcessEquipmentReturn');
+const UpdateEquipment = require('../../application/use-cases/UpdateEquipment');
+const DeleteEquipment = require('../../application/use-cases/DeleteEquipment');
 const PrismaEquipmentRepository = require('../repositories/PrismaEquipmentRepository');
 const PrismaUserRepository = require('../repositories/PrismaUserRepository');
 
@@ -13,6 +15,8 @@ const updateEquipmentStatusUseCase = new UpdateEquipmentStatus(equipmentReposito
 const getEquipmentStatsUseCase = new GetEquipmentStats(equipmentRepository);
 const generateEquipmentQRCodeUseCase = new GenerateEquipmentQRCode(equipmentRepository);
 const processEquipmentReturnUseCase = new ProcessEquipmentReturn(equipmentRepository, userRepository);
+const updateEquipmentUseCase = new UpdateEquipment(equipmentRepository);
+const deleteEquipmentUseCase = new DeleteEquipment(equipmentRepository);
 
 class EquipmentController {
   async create(req, res) {
@@ -86,6 +90,44 @@ class EquipmentController {
       const result = await processEquipmentReturnUseCase.execute(req.body);
       return res.json(result);
     } catch (error) {
+      return res.status(400).json({ error: error.message });
+    }
+  }
+
+  async update(req, res) {
+    try {
+      const { id } = req.params;
+      const { nome, descricao, categoria, status, proximaRevisao } = req.body;
+
+      const imagemUrl = req.files && req.files['imagem'] ? `/uploads/${req.files['imagem'][0].filename}` : undefined;
+      const manualPdf = req.files && req.files['manual'] ? `/uploads/${req.files['manual'][0].filename}` : undefined;
+
+      const updateData = {
+        nome,
+        descricao,
+        categoria,
+        status,
+        proximaRevisao,
+      };
+
+      if (imagemUrl !== undefined) updateData.imagemUrl = imagemUrl;
+      if (manualPdf !== undefined) updateData.manualPdf = manualPdf;
+
+      const equipment = await updateEquipmentUseCase.execute(id, updateData);
+      return res.json(equipment);
+    } catch (error) {
+      console.error(error);
+      return res.status(400).json({ error: error.message });
+    }
+  }
+
+  async delete(req, res) {
+    try {
+      const { id } = req.params;
+      await deleteEquipmentUseCase.execute(id);
+      return res.json({ message: 'Equipamento excluído com sucesso' });
+    } catch (error) {
+      console.error(error);
       return res.status(400).json({ error: error.message });
     }
   }

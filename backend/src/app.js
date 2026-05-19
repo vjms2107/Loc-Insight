@@ -5,6 +5,7 @@ const path = require('path');
 const equipmentRoutes = require('./infrastructure/routes/equipmentRoutes');
 const userRoutes = require('./infrastructure/routes/userRoutes');
 const maintenanceRoutes = require('./infrastructure/routes/maintenanceRoutes');
+const authRoutes = require('./infrastructure/routes/authRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -18,6 +19,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Rotas
+app.use('/auth', authRoutes);
 app.use('/equipments', equipmentRoutes);
 app.use('/users', userRoutes);
 app.use('/maintenances', maintenanceRoutes);

@@ -69,6 +69,27 @@ class PrismaEquipmentRepository {
       data: { proximaRevisao: new Date(date) }
     });
   }
+
+  async update(id, data) {
+    return await prisma.equipment.update({
+      where: { id: parseInt(id) },
+      data: {
+        nome: data.nome,
+        descricao: data.descricao,
+        categoria: data.categoria,
+        status: data.status,
+        imagemUrl: data.imagemUrl !== undefined ? data.imagemUrl : undefined,
+        manualPdf: data.manualPdf !== undefined ? data.manualPdf : undefined,
+        proximaRevisao: data.proximaRevisao !== undefined ? (data.proximaRevisao ? new Date(data.proximaRevisao) : null) : undefined,
+      }
+    });
+  }
+
+  async delete(id) {
+    return await prisma.equipment.delete({
+      where: { id: parseInt(id) }
+    });
+  }
 }
 
 module.exports = PrismaEquipmentRepository;

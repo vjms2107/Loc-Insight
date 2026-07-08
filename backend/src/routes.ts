@@ -755,6 +755,63 @@ router.get(
   })
 );
 
+// Listar todos os usuários (Admin e Client)
+router.get(
+  "/users",
+  asyncHandler(async (req: Request, res: Response) => {
+    const users = await prisma.user.findMany({
+      orderBy: { name: "asc" },
+    });
+    // Omitir senhas por segurança
+    const usersWithoutPassword = users.map(({ password, ...u }) => u);
+    res.json({ success: true, data: usersWithoutPassword });
+  })
+);
+
+// Cadastrar novo usuário (Admin ou Client)
+router.post(
+  "/users",
+  asyncHandler(async (req: Request, res: Response) => {
+    const { name, email, password, role } = req.body;
+
+    if (!name || !email || !password || !role) {
+      return res.status(400).json({
+        success: false,
+        error: { code: "FIELDS_REQUIRED", message: "Todos os campos (nome, e-mail, senha e função) são obrigatórios." },
+      });
+    }
+
+    if (role !== "ADMIN" && role !== "CLIENT") {
+      return res.status(400).json({
+        success: false,
+        error: { code: "INVALID_ROLE", message: "A função deve ser ADMIN ou CLIENT." },
+      });
+    }
+
+    // Validar e-mail único
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      return res.status(400).json({
+        success: false,
+        error: { code: "EMAIL_EXISTS", message: "Já existe um usuário cadastrado com este e-mail." },
+      });
+    }
+
+    const user = await prisma.user.create({
+      data: {
+        name,
+        email,
+        password,
+        role,
+        points: 0,
+      },
+    });
+
+    const { password: _, ...userWithoutPassword } = user;
+    res.status(201).json({ success: true, data: userWithoutPassword });
+  })
+);
+
 // Rota de login
 router.post(
   "/auth/login",

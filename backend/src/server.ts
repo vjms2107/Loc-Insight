@@ -21,6 +21,9 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Servir arquivos estáticos do frontend construído
+app.use(express.static(path.join(__dirname, "../../frontend/dist")));
+
 // Servir arquivos estáticos (fotos de equipamentos e manuais PDF)
 app.use("/uploads", express.static(path.join(__dirname, "../../uploads")));
 
@@ -32,6 +35,15 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok", service: "LocInsight API" });
 });
 
+// Rota fallback para SPA (carrega o frontend construído)
+app.get("*all", (req, res, next) => {
+  // Ignora chamadas para /api, /uploads ou /health que derem 404
+  if (req.path.startsWith("/api") || req.path.startsWith("/uploads") || req.path.startsWith("/health")) {
+    return next();
+  }
+  res.sendFile(path.join(__dirname, "../../frontend/dist/index.html"));
+});
+
 // Inicializar servidor
 app.listen(PORT, () => {
   console.log(`====================================================`);
@@ -39,3 +51,4 @@ app.listen(PORT, () => {
   console.log(`📂 Pasta de uploads exposta em http://localhost:${PORT}/uploads`);
   console.log(`====================================================`);
 });
+

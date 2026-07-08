@@ -83,9 +83,13 @@ function App() {
     const saved = localStorage.getItem('locinsight_user');
     return saved ? JSON.parse(saved) : null;
   });
+  const currentUserRef = useRef<User | null>(currentUser);
+  currentUserRef.current = currentUser;
   const [activeTab, setActiveTab] = useState<'dashboard' | 'catalog'>('catalog');
-  const [adminTab, setAdminTab] = useState<'rentals' | 'equipments' | 'maintenances' | 'categories'>('rentals');
+  const [adminTab, setAdminTab] = useState<'rentals' | 'equipments' | 'maintenances' | 'categories' | 'users'>('rentals');
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // ============================================================================
   // ESTADOS DE DADOS (DASHBOARD & CATÁLOGO)
@@ -94,6 +98,7 @@ function App() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [maintenances, setMaintenances] = useState<Maintenance[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
 
   // Filtros do Catálogo
   const [searchTerm, setSearchTerm] = useState('');
@@ -151,42 +156,64 @@ function App() {
   // Form de Resgate de Pontos (Cliente)
   const [pointsToRedeem, setPointsToRedeem] = useState<number>(10);
 
+  // Form de Novo Usuário (Admin)
+  const [newUserName, setNewUserName] = useState('');
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserRole, setNewUserRole] = useState<'ADMIN' | 'CLIENT'>('CLIENT');
+  const [newUserPassword, setNewUserPassword] = useState('');
+
   // ============================================================================
   // CARREGAMENTO DE DADOS DO BACKEND
   // ============================================================================
   const loadAllData = async () => {
+    const userAtStart = currentUserRef.current;
     setLoading(true);
     try {
-      const isAdmin = currentUser?.role === 'ADMIN';
+      const isAdmin = userAtStart?.role === 'ADMIN';
       const eqData = await api.getEquipments(isAdmin ? {} : { public: true });
+      if (currentUserRef.current?.id !== userAtStart?.id) return;
       setEquipments(eqData);
 
       const catData = await api.getCategories();
+      if (currentUserRef.current?.id !== userAtStart?.id) return;
       setCategories(catData);
 
-      if (currentUser) {
+      if (userAtStart) {
         if (isAdmin) {
           // Dados Administrativos adicionais
           const rentalsData = await api.getRentals();
+          if (currentUserRef.current?.id !== userAtStart.id) return;
           setRentals(rentalsData);
 
           const maintData = await api.getMaintenances();
+          if (currentUserRef.current?.id !== userAtStart.id) return;
           setMaintenances(maintData);
+
+          const usersData = await api.getUsers();
+          if (currentUserRef.current?.id !== userAtStart.id) return;
+          setUsers(usersData);
         } else {
           // Dados específicos do Cliente logado (Histórico, Pontos, etc.)
-          const clientDetails = await api.getClientById(currentUser.id);
+          const clientDetails = await api.getClientById(userAtStart.id);
+          if (currentUserRef.current?.id !== userAtStart.id) return;
           setRentals(clientDetails.rentals || []);
 
           // Atualizar pontos do cliente na sessão caso tenha mudado
-          const updatedUser = { ...currentUser, points: clientDetails.points };
-          setCurrentUser(updatedUser);
-          localStorage.setItem('locinsight_user', JSON.stringify(updatedUser));
+          if (currentUserRef.current && currentUserRef.current.points !== clientDetails.points) {
+            const updatedUser = { ...currentUserRef.current, points: clientDetails.points };
+            setCurrentUser(updatedUser);
+            localStorage.setItem('locinsight_user', JSON.stringify(updatedUser));
+          }
         }
       }
     } catch (err: any) {
-      triggerError(err.message || 'Erro ao carregar dados do servidor');
+      if (currentUserRef.current?.id === userAtStart?.id) {
+        triggerError(err.message || 'Erro ao carregar dados do servidor');
+      }
     } finally {
-      setLoading(false);
+      if (currentUserRef.current?.id === userAtStart?.id) {
+        setLoading(false);
+      }
     }
   };
 
@@ -329,6 +356,38 @@ function App() {
       loadAllData();
     } catch (err: any) {
       triggerError(err.message || 'Erro ao remover equipamento');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 1b. Criar Usuário (Admin)
+  const handleAddUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newUserName || !newUserEmail || !newUserPassword || !newUserRole) {
+      triggerError('Por favor, preencha todos os campos obrigatórios.');
+      return;
+    }
+    setLoading(true);
+    try {
+      await api.createUser({
+        name: newUserName,
+        email: newUserEmail,
+        role: newUserRole,
+        password: newUserPassword
+      });
+      triggerSuccess('Usuário cadastrado com sucesso!');
+      setShowAddUserModal(false);
+
+      // Limpar campos
+      setNewUserName('');
+      setNewUserEmail('');
+      setNewUserRole('CLIENT');
+      setNewUserPassword('');
+
+      loadAllData();
+    } catch (err: any) {
+      triggerError(err.message || 'Erro ao cadastrar usuário');
     } finally {
       setLoading(false);
     }
@@ -560,9 +619,21 @@ Solicito análise cadastral e contrato para envio ao endereço da obra. Obrigado
   return (
     <div className="app-container">
 
+      {/* SIDEBAR OVERLAY FOR MOBILE */}
+      {currentUser && isSidebarOpen && (
+        <div className="sidebar-overlay" onClick={() => setIsSidebarOpen(false)} />
+      )}
+
       {/* SIDEBAR */}
       {currentUser && (
-        <aside className="sidebar">
+        <aside className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
+
+          {/* Close button inside sidebar for mobile */}
+          <div className="sidebar-mobile-header">
+            <button onClick={() => setIsSidebarOpen(false)} className="sidebar-close-btn" aria-label="Fechar menu">
+              <IconClose />
+            </button>
+          </div>
 
           {/* Logo */}
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '32px', height: '65px' }}>
@@ -586,7 +657,7 @@ Solicito análise cadastral e contrato para envio ao endereço da obra. Obrigado
           <ul className="nav-links">
             <li>
               <button
-                onClick={() => setActiveTab('dashboard')}
+                onClick={() => { setActiveTab('dashboard'); setIsSidebarOpen(false); }}
                 className={`nav-link-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
               >
                 <IconDashboard /> Painel Operacional
@@ -594,7 +665,7 @@ Solicito análise cadastral e contrato para envio ao endereço da obra. Obrigado
             </li>
             <li>
               <button
-                onClick={() => setActiveTab('catalog')}
+                onClick={() => { setActiveTab('catalog'); setIsSidebarOpen(false); }}
                 className={`nav-link-btn ${activeTab === 'catalog' ? 'active' : ''}`}
               >
                 <IconCatalog /> Catálogo Digital
@@ -619,6 +690,21 @@ Solicito análise cadastral e contrato para envio ao endereço da obra. Obrigado
             </button>
           </div>
         </aside>
+      )}
+
+      {/* MOBILE HEADER */}
+      {currentUser && (
+        <header className="mobile-header">
+          <button onClick={() => setIsSidebarOpen(true)} className="mobile-menu-btn" aria-label="Abrir menu">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="3" x2="21" y1="12" y2="12"/><line x1="3" x2="21" y1="6" y2="6"/><line x1="3" x2="21" y1="18" y2="18"/></svg>
+          </button>
+          <div className="mobile-header-logo">
+            <img src="/logo.svg" alt="Loc Insight" style={{ height: '32px' }} />
+          </div>
+          <div style={{ background: isAdmin ? 'var(--secondary)' : 'var(--primary)', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: '12px' }}>
+            {currentUser.name[0]}
+          </div>
+        </header>
       )}
 
       {/* CONTEÚDO PRINCIPAL */}
@@ -711,6 +797,9 @@ Solicito análise cadastral e contrato para envio ao endereço da obra. Obrigado
                   </button>
                   <button onClick={() => setAdminTab('categories')} className={`tab-btn ${adminTab === 'categories' ? 'active' : ''}`}>
                     Categorias
+                  </button>
+                  <button onClick={() => setAdminTab('users')} className={`tab-btn ${adminTab === 'users' ? 'active' : ''}`}>
+                    Usuários ({users.length})
                   </button>
                 </div>
 
@@ -919,6 +1008,52 @@ Solicito análise cadastral e contrato para envio ao endereço da obra. Obrigado
                   </div>
                 )}
 
+                {/* ABA INTERNA: USUÁRIOS */}
+                {adminTab === 'users' && (
+                  <div className="glass-card">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                      <h3>Usuários Cadastrados</h3>
+                      <button onClick={() => setShowAddUserModal(true)} className="btn btn-primary" style={{ padding: '8px 14px' }}>
+                        <IconPlus /> Cadastrar Usuário
+                      </button>
+                    </div>
+                    <div className="table-container">
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>Nome</th>
+                            <th>E-mail</th>
+                            <th>Função</th>
+                            <th>Pontos (Fidelidade)</th>
+                            <th>Criado em</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {users.length === 0 ? (
+                            <tr>
+                              <td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>Nenhum usuário cadastrado.</td>
+                            </tr>
+                          ) : (
+                            users.map(u => (
+                              <tr key={u.id}>
+                                <td style={{ fontWeight: 600, color: 'var(--text-main)' }}>{u.name}</td>
+                                <td>{u.email}</td>
+                                <td>
+                                  <span className={`eq-status-badge ${u.role === 'ADMIN' ? 'status-disponivel' : 'status-alugado'}`} style={{ position: 'static' }}>
+                                    {u.role}
+                                  </span>
+                                </td>
+                                <td>{u.role === 'CLIENT' ? `${u.points} pts` : '-'}</td>
+                                <td>{u.createdAt ? new Date(u.createdAt).toLocaleDateString('pt-BR') : '-'}</td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
               </div>
             ) : (
               // -------------------------------------------------------------
@@ -940,7 +1075,7 @@ Solicito análise cadastral e contrato para envio ao endereço da obra. Obrigado
                       </div>
                       <h2 style={{ fontSize: '16px', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Seu Saldo de Pontos</h2>
                       <div style={{ fontSize: '64px', fontWeight: 900, fontFamily: 'var(--font-title)', color: '#fff', display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                        {currentUser.points}
+                        {currentUser?.points ?? 0}
                         <span style={{ fontSize: '18px', color: 'var(--primary)', fontWeight: 700 }}>pontos</span>
                       </div>
                     </div>
@@ -982,9 +1117,9 @@ Solicito análise cadastral e contrato para envio ao endereço da obra. Obrigado
                         type="submit"
                         className="btn btn-primary"
                         style={{ width: '100%', padding: '12px' }}
-                        disabled={loading || currentUser.points < pointsToRedeem}
+                        disabled={loading || !currentUser || currentUser.points < pointsToRedeem}
                       >
-                        {currentUser.points < pointsToRedeem ? 'Pontos Insuficientes' : 'Resgatar Desconto Agora'}
+                        {!currentUser || currentUser.points < pointsToRedeem ? 'Pontos Insuficientes' : 'Resgatar Desconto Agora'}
                       </button>
                     </form>
                   </div>
@@ -1051,11 +1186,11 @@ Solicito análise cadastral e contrato para envio ao endereço da obra. Obrigado
           <div>
             {/* Barra de Navegação Superior Pública */}
             {!currentUser && (
-              <div className="glass-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', padding: '16px 28px', borderLeft: '4px solid var(--primary)' }}>
-                <div style={{ height: '40px', display: 'flex', alignItems: 'center' }}>
-                  <img src="/logo.svg" alt="Loc Insight" style={{ maxHeight: '100%', objectFit: 'contain' }} />
+              <div className="glass-card public-nav-bar">
+                <div className="public-nav-logo">
+                  <img src="/logo.svg" alt="Loc Insight" />
                 </div>
-                <button onClick={() => setShowLoginModal(true)} className="btn btn-primary" style={{ padding: '10px 24px', fontSize: '14px', background: 'linear-gradient(135deg, var(--secondary) 0%, var(--secondary-hover) 100%)', boxShadow: 'none' }}>
+                <button onClick={() => setShowLoginModal(true)} className="btn btn-primary public-nav-btn">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px' }}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                   Entrar / Login
                 </button>
@@ -1619,9 +1754,12 @@ Solicito análise cadastral e contrato para envio ao endereço da obra. Obrigado
       {showLoginModal && (
         <div className="modal-overlay">
           <div className="modal-content" style={{ maxWidth: '460px', width: '100%', padding: '32px' }}>
-            <div className="modal-header">
-              <h3 className="modal-title">Acesso ao Sistema</h3>
-              <button onClick={() => setShowLoginModal(false)} className="modal-close"><IconClose /></button>
+            <div className="modal-header" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <img src="/logo.svg" alt="Loc Insight" style={{ height: '32px', objectFit: 'contain' }} />
+                <h3 className="modal-title">Acesso ao Sistema</h3>
+              </div>
+              <button onClick={() => setShowLoginModal(false)} className="modal-close" style={{ marginLeft: 'auto' }}><IconClose /></button>
             </div>
 
             <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '24px' }}>
@@ -1697,6 +1835,79 @@ Solicito análise cadastral e contrato para envio ao endereço da obra. Obrigado
                 🔄 Restaurar Banco de Dados de Teste
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 9. Modal: Cadastrar Novo Usuário (Admin) */}
+      {showAddUserModal && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '460px', width: '100%', padding: '32px' }}>
+            <div className="modal-header">
+              <h3 className="modal-title">Cadastrar Novo Usuário</h3>
+              <button onClick={() => setShowAddUserModal(false)} className="modal-close"><IconClose /></button>
+            </div>
+
+            <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '24px' }}>
+              Crie credenciais de acesso para um novo administrador ou cliente.
+            </p>
+
+            <form onSubmit={handleAddUser}>
+              <div className="form-group">
+                <label className="form-label">Nome Completo *</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Ex: Carlos Oliveira"
+                  value={newUserName}
+                  onChange={e => setNewUserName(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">E-mail de Acesso *</label>
+                <input
+                  type="email"
+                  className="form-control"
+                  placeholder="Ex: carlos@empresa.com"
+                  value={newUserEmail}
+                  onChange={e => setNewUserEmail(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Função (Role) *</label>
+                  <select
+                    className="form-control"
+                    value={newUserRole}
+                    onChange={e => setNewUserRole(e.target.value as 'ADMIN' | 'CLIENT')}
+                    required
+                  >
+                    <option value="CLIENT">Cliente (CLIENT)</option>
+                    <option value="ADMIN">Administrador (ADMIN)</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Senha Inicial *</label>
+                  <input
+                    type="password"
+                    className="form-control"
+                    placeholder="Mínimo 6 caracteres"
+                    value={newUserPassword}
+                    onChange={e => setNewUserPassword(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', marginTop: '28px' }}>
+                <button type="button" onClick={() => setShowAddUserModal(false)} className="btn btn-secondary" style={{ flex: 1 }}>Cancelar</button>
+                <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={loading}>Salvar Usuário</button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -147,6 +147,13 @@ export const api = {
     method: "POST",
     body: JSON.stringify({ pointsToRedeem }),
   }),
+
+  // Users
+  getUsers: () => request<User[]>("/users"),
+  createUser: (data: { name: string; email: string; role: 'ADMIN' | 'CLIENT'; password: string }) => request<User>("/users", {
+    method: "POST",
+    body: JSON.stringify(data),
+  }),
 };
 
 export default api;

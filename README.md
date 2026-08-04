@@ -1,4 +1,4 @@
-# 🏗️ LocalizaCivil — Sistema de Localização Civil
+# 🏗️ LocInsight — Sistema de Localização Civil
 
 > **Plataforma web para gestão inteligente de locação de equipamentos da construção civil.**  
 > Focada em controle de inventário, melhoria da experiência do cliente, manutenção preventiva automatizada e estratégias de fidelização baseadas no bom uso dos equipamentos.
@@ -7,7 +7,7 @@
 
 ## 📌 Visão Geral do Projeto
 
-O **LocalizaCivil** surge para resolver dores operacionais e comerciais de locadoras de equipamentos da construção civil. A plataforma integra a gestão interna da locadora com a jornada digital do cliente, otimizando o fluxo de locação via WhatsApp, garantindo conformidade técnica por meio de centrais de manuais e aumentando a durabilidade do inventário através de incentivos de fidelização e checklists de devolução.
+O **LocInsight** surge para resolver dores operacionais e comerciais de locadoras de equipamentos da construção civil. A plataforma integra a gestão interna da locadora com a jornada digital do cliente, otimizando o fluxo de locação via WhatsApp, garantindo conformidade técnica por meio de centrais de manuais e aumentando a durabilidade do inventário através de incentivos de fidelização e checklists de devolução.
 
 ### Objetivos Principais
 * 📦 **Gestão Integrada de Ativos:** Controle do ciclo de vida dos equipamentos (Disponível, Alugado, Manutenção).
@@ -24,6 +24,10 @@ A arquitetura do sistema foi desenhada seguindo os princípios de **Clean Archit
 
 ### Stack Tecnológica
 * **Front-end:** [React](https://reactjs.org/) | [Next.js](https://nextjs.org/) | [TailwindCSS](https://tailwindcss.com/)
+* * **Back-end:** [Node.js](https://nodejs.org/) | [Express](https://expressjs.com/)
+* **ORM:** [Sequelize](https://sequelize.org/) / [Prisma](https://www.prisma.io/)
+* **Banco de Dados:** [PostgreSQL](https://www.postgresql.org/)
+
 
 ---
 
@@ -51,12 +55,8 @@ A arquitetura do sistema foi desenhada seguindo os princípios de **Clean Archit
 Projeto acadêmico / MVP em desenvolvimento. Licença MIT ou proprietária conforme diretrizes do repositório.
 
 ---
-
 ## Realização
 
 👨‍💻 Victor José Maciel de Siqueira
 
 ---
-* **Back-end:** [Node.js](https://nodejs.org/) | [Express](https://expressjs.com/)
-* **ORM:** [Sequelize](https://sequelize.org/) / [Prisma](https://www.prisma.io/)
-* **Banco de Dados:** [PostgreSQL](https://www.postgresql.org/)

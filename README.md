@@ -24,7 +24,7 @@ A arquitetura do sistema foi desenhada seguindo os princípios de **Clean Archit
 
 ### Stack Tecnológica
 * **Front-end:** [React](https://reactjs.org/) | [Next.js](https://nextjs.org/) | [TailwindCSS](https://tailwindcss.com/)
-* * **Back-end:** [Node.js](https://nodejs.org/) | [Express](https://expressjs.com/)
+* **Back-end:** [Node.js](https://nodejs.org/) | [Express](https://expressjs.com/)
 * **ORM:** [Sequelize](https://sequelize.org/) / [Prisma](https://www.prisma.io/)
 * **Banco de Dados:** [PostgreSQL](https://www.postgresql.org/)
 

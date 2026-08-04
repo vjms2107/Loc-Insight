@@ -29,6 +29,7 @@ model Equipment {
   category     Category        @relation(fields: [categoryId], references: [id])
   status       EquipmentStatus @default(DISPONIVEL) // Agora usando o Enum nativo do PostgreSQL
   serialNumber String          @unique
+  quantity     Int             @default(1)
   manualUrl    String?         // URL para o PDF do manual
   imageUrl     String?
   createdAt    DateTime        @default(now())

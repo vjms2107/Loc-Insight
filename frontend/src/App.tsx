@@ -19,6 +19,7 @@ export interface Equipment {
   category?: Category;
   status: 'DISPONIVEL' | 'ALUGADO' | 'MANUTENCAO';
   serialNumber: string;
+  quantity: number;
   manualUrl?: string | null;
   imageUrl?: string | null;
   createdAt?: string;
@@ -125,13 +126,26 @@ function App() {
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
 
-  // Form de Equipamento
+  // Form de Equipamento (Cadastro)
   const [eqName, setEqName] = useState('');
   const [eqSerial, setEqSerial] = useState('');
   const [eqCategory, setEqCategory] = useState('');
   const [eqDescription, setEqDescription] = useState('');
+  const [eqQuantity, setEqQuantity] = useState('1');
   const manualInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+
+  // Form de Equipamento (Edição)
+  const [showEditEquipmentModal, setShowEditEquipmentModal] = useState(false);
+  const [editingEquipment, setEditingEquipment] = useState<Equipment | null>(null);
+  const [editEqName, setEditEqName] = useState('');
+  const [editEqSerial, setEditEqSerial] = useState('');
+  const [editEqCategory, setEditEqCategory] = useState('');
+  const [editEqDescription, setEditEqDescription] = useState('');
+  const [editEqQuantity, setEditEqQuantity] = useState('1');
+  const [editEqStatus, setEditEqStatus] = useState<'DISPONIVEL' | 'ALUGADO' | 'MANUTENCAO'>('DISPONIVEL');
+  const editManualInputRef = useRef<HTMLInputElement>(null);
+  const editImageInputRef = useRef<HTMLInputElement>(null);
 
   // Form de Categoria
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -310,6 +324,7 @@ function App() {
     formData.append('serialNumber', eqSerial);
     formData.append('categoryId', eqCategory);
     formData.append('description', eqDescription);
+    formData.append('quantity', eqQuantity);
 
     const manualFile = manualInputRef.current?.files?.[0];
     const imageFile = imageInputRef.current?.files?.[0];
@@ -337,6 +352,7 @@ function App() {
       setEqSerial('');
       setEqCategory('');
       setEqDescription('');
+      setEqQuantity('1');
 
       loadAllData();
     } catch (err: any) {
@@ -356,6 +372,60 @@ function App() {
       loadAllData();
     } catch (err: any) {
       triggerError(err.message || 'Erro ao remover equipamento');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Abrir modal de Edição preenchido
+  const openEditModal = (eq: Equipment) => {
+    setEditingEquipment(eq);
+    setEditEqName(eq.name);
+    setEditEqSerial(eq.serialNumber);
+    setEditEqCategory(eq.categoryId);
+    setEditEqDescription(eq.description || '');
+    setEditEqQuantity(String(eq.quantity));
+    setEditEqStatus(eq.status);
+    setShowEditEquipmentModal(true);
+  };
+
+  // Editar Equipamento (Atualizar Ativo)
+  const handleEditEquipment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingEquipment) return;
+    if (!editEqName || !editEqCategory || !editEqSerial) {
+      triggerError('Por favor, preencha os campos obrigatórios.');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('name', editEqName);
+    formData.append('serialNumber', editEqSerial);
+    formData.append('categoryId', editEqCategory);
+    formData.append('description', editEqDescription);
+    formData.append('quantity', editEqQuantity);
+    formData.append('status', editEqStatus);
+
+    const manualFile = editManualInputRef.current?.files?.[0];
+    const imageFile = editImageInputRef.current?.files?.[0];
+
+    // Obs: Arquivos são opcionais na atualização
+    if (manualFile) {
+      formData.append('manual', manualFile);
+    }
+    if (imageFile) {
+      formData.append('image', imageFile);
+    }
+
+    setLoading(true);
+    try {
+      await api.updateEquipment(editingEquipment.id, formData);
+      triggerSuccess('Equipamento atualizado com sucesso!');
+      setShowEditEquipmentModal(false);
+      setEditingEquipment(null);
+      loadAllData();
+    } catch (err: any) {
+      triggerError(err.message || 'Erro ao atualizar equipamento');
     } finally {
       setLoading(false);
     }
@@ -870,6 +940,7 @@ Solicito análise cadastral e contrato para envio ao endereço da obra. Obrigado
                           <th>Equipamento</th>
                           <th>Categoria</th>
                           <th>Nº de Série</th>
+                          <th>Quantidade</th>
                           <th>Status</th>
                           <th>Manual Técnico</th>
                           <th style={{ textAlign: 'right' }}>Ações</th>
@@ -889,6 +960,7 @@ Solicito análise cadastral e contrato para envio ao endereço da obra. Obrigado
                             </td>
                             <td>{eq.category?.name}</td>
                             <td style={{ fontFamily: 'monospace', fontWeight: 600 }}>{eq.serialNumber}</td>
+                            <td style={{ fontWeight: 600 }}>{eq.quantity}</td>
                             <td>
                               <span className={`eq-status-badge ${eq.status === 'DISPONIVEL' ? 'status-disponivel' : eq.status === 'ALUGADO' ? 'status-alugado' : 'status-manutencao'}`} style={{ position: 'static' }}>
                                 {eq.status}
@@ -905,6 +977,13 @@ Solicito análise cadastral e contrato para envio ao endereço da obra. Obrigado
                             </td>
                             <td style={{ textAlign: 'right' }}>
                               <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                <button
+                                  onClick={() => openEditModal(eq)}
+                                  className="btn btn-secondary"
+                                  style={{ padding: '6px 12px', fontSize: '11px' }}
+                                >
+                                  Editar
+                                </button>
                                 {eq.status === 'DISPONIVEL' && (
                                   <button
                                     onClick={() => { setMaintEqId(eq.id); setShowAddMaintenanceModal(true); }}
@@ -1267,7 +1346,10 @@ Solicito análise cadastral e contrato para envio ao endereço da obra. Obrigado
                     <div className="eq-details">
                       <span className="eq-category">{eq.category?.name || 'Geral'}</span>
                       <h3 className="eq-title">{eq.name}</h3>
-                      <span className="eq-serial">Série: {eq.serialNumber}</span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <span className="eq-serial" style={{ marginBottom: 0 }}>Série: {eq.serialNumber}</span>
+                        <span className="eq-serial" style={{ marginBottom: 0, fontWeight: 700, color: 'var(--primary)' }}>Qtd: {eq.quantity}</span>
+                      </div>
                       <p className="eq-desc">{eq.description || 'Sem descrição técnica no momento.'}</p>
 
                       <div className="eq-actions">
@@ -1369,6 +1451,18 @@ Solicito análise cadastral e contrato para envio ao endereço da obra. Obrigado
                     placeholder="Ex: MAR-010-999"
                     value={eqSerial}
                     onChange={e => setEqSerial(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Quantidade *</label>
+                  <input
+                    type="number"
+                    min="1"
+                    className="form-control"
+                    placeholder="Ex: 1"
+                    value={eqQuantity}
+                    onChange={e => setEqQuantity(e.target.value)}
                     required
                   />
                 </div>
@@ -1906,6 +2000,131 @@ Solicito análise cadastral e contrato para envio ao endereço da obra. Obrigado
               <div style={{ display: 'flex', gap: '12px', marginTop: '28px' }}>
                 <button type="button" onClick={() => setShowAddUserModal(false)} className="btn btn-secondary" style={{ flex: 1 }}>Cancelar</button>
                 <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={loading}>Salvar Usuário</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Editar Equipamento */}
+      {showEditEquipmentModal && editingEquipment && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3 className="modal-title">Editar Equipamento</h3>
+              <button onClick={() => { setShowEditEquipmentModal(false); setEditingEquipment(null); }} className="modal-close"><IconClose /></button>
+            </div>
+
+            <form onSubmit={handleEditEquipment}>
+              <div className="form-group">
+                <label className="form-label">Nome do Ativo *</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Ex: Martelete Demolidor SDS Max 10kg"
+                  value={editEqName}
+                  onChange={e => setEditEqName(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Categoria *</label>
+                  <select
+                    className="form-control"
+                    value={editEqCategory}
+                    onChange={e => setEditEqCategory(e.target.value)}
+                    required
+                  >
+                    <option value="">Selecione...</option>
+                    {categories.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Número de Série *</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Ex: MAR-010-999"
+                    value={editEqSerial}
+                    onChange={e => setEditEqSerial(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Quantidade *</label>
+                  <input
+                    type="number"
+                    min="1"
+                    className="form-control"
+                    placeholder="Ex: 1"
+                    value={editEqQuantity}
+                    onChange={e => setEditEqQuantity(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Status *</label>
+                  <select
+                    className="form-control"
+                    value={editEqStatus}
+                    onChange={e => setEditEqStatus(e.target.value as 'DISPONIVEL' | 'ALUGADO' | 'MANUTENCAO')}
+                    required
+                  >
+                    <option value="DISPONIVEL">Disponível</option>
+                    <option value="ALUGADO">Alugado</option>
+                    <option value="MANUTENCAO">Manutenção</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Descrição Técnica</label>
+                <textarea
+                  className="form-control"
+                  rows={3}
+                  placeholder="Especificações do motor, potência, uso recomendado..."
+                  value={editEqDescription}
+                  onChange={e => setEditEqDescription(e.target.value)}
+                />
+              </div>
+
+              {/* No modal de edição, os arquivos de PDF e Imagem são opcionais */}
+              <div className="form-group">
+                <label className="form-label">Manual Técnico (PDF) <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>(Deixe em branco para manter o atual)</span></label>
+                <div className="file-upload-wrapper">
+                  <div className="file-upload-btn">📂 Alterar Arquivo PDF</div>
+                  <input
+                    type="file"
+                    ref={editManualInputRef}
+                    className="file-upload-input"
+                    accept=".pdf"
+                  />
+                </div>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '24px' }}>
+                <label className="form-label">Foto do Equipamento <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>(Deixe em branco para manter a atual)</span></label>
+                <div className="file-upload-wrapper">
+                  <div className="file-upload-btn">📷 Alterar Imagem (JPG/PNG)</div>
+                  <input
+                    type="file"
+                    ref={editImageInputRef}
+                    className="file-upload-input"
+                    accept="image/*"
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button type="button" onClick={() => { setShowEditEquipmentModal(false); setEditingEquipment(null); }} className="btn btn-secondary" style={{ flex: 1 }}>Cancelar</button>
+                <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={loading}>Salvar Alterações</button>
               </div>
             </form>
           </div>

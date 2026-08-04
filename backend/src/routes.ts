@@ -60,6 +60,7 @@ router.post(
         categoryId: catBetoneira.id,
         status: "DISPONIVEL",
         serialNumber: "BET-400-001",
+        quantity: 3,
         manualUrl: "/uploads/manual-sample.pdf",
         imageUrl: "https://images.unsplash.com/photo-1589939705384-5185137a7f0f?q=80&w=400",
       },
@@ -72,6 +73,7 @@ router.post(
         categoryId: catFerramentas.id,
         status: "DISPONIVEL",
         serialNumber: "MAR-010-002",
+        quantity: 2,
         manualUrl: "/uploads/manual-sample.pdf",
         imageUrl: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?q=80&w=400",
       },
@@ -84,6 +86,7 @@ router.post(
         categoryId: catGeradores.id,
         status: "MANUTENCAO",
         serialNumber: "GER-3000-003",
+        quantity: 1,
         manualUrl: "/uploads/manual-sample.pdf",
         imageUrl: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?q=80&w=400",
       },
@@ -96,6 +99,7 @@ router.post(
         categoryId: catAndaimes.id,
         status: "ALUGADO",
         serialNumber: "AND-150-004",
+        quantity: 4,
         manualUrl: "/uploads/manual-sample.pdf",
         imageUrl: "https://images.unsplash.com/photo-1541888946425-d81bb19240f5?q=80&w=400",
       },
@@ -251,7 +255,7 @@ router.post(
   ]),
   asyncHandler(async (req: Request, res: Response) => {
     const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
-    const { name, description, categoryId, serialNumber } = req.body;
+    const { name, description, categoryId, serialNumber, quantity } = req.body;
 
     // Obter caminhos dos arquivos caso tenham sido enviados
     const manualFile = files?.["manual"]?.[0];
@@ -290,6 +294,7 @@ router.post(
         description,
         categoryId,
         serialNumber,
+        quantity: quantity ? parseInt(String(quantity), 10) : 1,
         manualUrl,
         imageUrl: imageUrl || "https://images.unsplash.com/photo-1581092160607-ee22621dd758?q=80&w=400", // Fallback
         status: "DISPONIVEL",
@@ -310,7 +315,7 @@ router.put(
   asyncHandler(async (req: Request, res: Response) => {
     const id = req.params.id as string; // Corrigido TS2322 com Type Casting explícito
     const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
-    const { name, description, categoryId, serialNumber, status } = req.body;
+    const { name, description, categoryId, serialNumber, status, quantity } = req.body;
 
     const existingEq = await prisma.equipment.findUnique({ where: { id } });
     if (!existingEq) {
@@ -346,6 +351,7 @@ router.put(
         categoryId: categoryId || existingEq.categoryId,
         serialNumber: serialNumber || existingEq.serialNumber,
         status: status || existingEq.status,
+        quantity: quantity !== undefined ? parseInt(String(quantity), 10) : existingEq.quantity,
         manualUrl,
         imageUrl,
       },
@@ -457,10 +463,16 @@ router.post(
       },
     });
 
-    await prisma.equipment.update({
-      where: { id: String(equipmentId) },
-      data: { status: "ALUGADO" },
+    const activeRentalsCount = await prisma.rental.count({
+      where: { equipmentId: String(equipmentId), status: "ACTIVE" }
     });
+
+    if (activeRentalsCount >= equipment.quantity) {
+      await prisma.equipment.update({
+        where: { id: String(equipmentId) },
+        data: { status: "ALUGADO" },
+      });
+    }
 
     res.status(201).json({ success: true, data: rental });
   })

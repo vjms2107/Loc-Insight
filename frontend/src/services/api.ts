@@ -15,6 +15,7 @@ export interface Equipment {
   category?: Category;
   status: "DISPONIVEL" | "ALUGADO" | "MANUTENCAO";
   serialNumber: string;
+  quantity: number;
   manualUrl?: string;
   imageUrl?: string;
   createdAt: string;

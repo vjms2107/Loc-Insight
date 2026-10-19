@@ -91,6 +91,11 @@ function App() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  // Controla exibição da landing page (tela inicial)
+  const [showLandingPage, setShowLandingPage] = useState<boolean>(() => {
+    const saved = localStorage.getItem('locinsight_user');
+    return !saved; // Mostra landing se não há usuário salvo
+  });
 
   // ============================================================================
   // ESTADOS DE DADOS (DASHBOARD & CATÁLOGO)
@@ -685,6 +690,124 @@ Solicito análise cadastral e contrato para envio ao endereço da obra. Obrigado
   // RENDERIZAÇÃO: SISTEMA PRINCIPAL
   // ============================================================================
   const isAdmin = currentUser ? currentUser.role === 'ADMIN' : false;
+
+
+
+  // Se a landing page está ativa, renderiza-a
+  if (showLandingPage && !currentUser) {
+    return (
+      <div className="landing-page">
+        {/* Mensagens de Feedback na landing */}
+        {errorMessage && (
+          <div className="alert alert-warning landing-alert">
+            <span>{errorMessage}</span>
+          </div>
+        )}
+        {successMessage && (
+          <div className="alert alert-success landing-alert">
+            <span>{successMessage}</span>
+          </div>
+        )}
+
+        {/* Partículas decorativas de fundo */}
+        <div className="landing-particles">
+          <div className="particle particle-1" />
+          <div className="particle particle-2" />
+          <div className="particle particle-3" />
+          <div className="particle particle-4" />
+        </div>
+
+        {/* Conteúdo central */}
+        <div className="landing-content">
+          {/* Logo */}
+          <div className="landing-logo-wrapper">
+            <img src="/logo.svg" alt="Loc Insight" className="landing-logo" />
+          </div>
+
+          {/* Tagline */}
+          <p className="landing-tagline">
+            Gestão inteligente de locação de equipamentos
+          </p>
+
+          {/* Botões de Ação */}
+          <div className="landing-actions">
+            <button
+              id="landing-btn-catalogo"
+              className="landing-btn landing-btn-primary"
+              onClick={() => setShowLandingPage(false)}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z" />
+                <path d="M6 6h10" /><path d="M6 10h10" />
+              </svg>
+              Catálogo
+            </button>
+
+            <button
+              id="landing-btn-login"
+              className="landing-btn landing-btn-secondary"
+              onClick={() => { setShowLandingPage(false); setShowLoginModal(true); }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                <polyline points="10 17 15 12 10 7" />
+                <line x1="15" x2="3" y1="12" y2="12" />
+              </svg>
+              Login
+            </button>
+          </div>
+        </div>
+
+        {/* Modal de Login (reutilizado da app) */}
+        {showLoginModal && (
+          <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowLoginModal(false); }}>
+            <div className="modal-box">
+              <div className="modal-header">
+                <h2 className="modal-title">Acessar o Painel</h2>
+                <button onClick={() => setShowLoginModal(false)} className="modal-close-btn" aria-label="Fechar"><IconClose /></button>
+              </div>
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                if (!loginEmail || !loginPassword) return;
+                setLoading(true);
+                try {
+                  const user = await api.login(loginEmail, loginPassword);
+                  setCurrentUser(user);
+                  localStorage.setItem('locinsight_user', JSON.stringify(user));
+                  setShowLoginModal(false);
+                  setShowLandingPage(false);
+                  if (user.role === 'ADMIN') setActiveTab('dashboard');
+                  else setActiveTab('catalog');
+                  triggerSuccess(`Bem-vindo, ${user.name}!`);
+                } catch (err: any) {
+                  triggerError(err.message || 'Dados de login inválidos');
+                } finally {
+                  setLoading(false);
+                }
+              }}>
+                {/* Atalhos de Login Rápido */}
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+                  <button type="button" onClick={() => { setLoginEmail('admin@locinsight.com'); setLoginPassword('admin_password'); }} className="btn btn-secondary" style={{ flex: 1, fontSize: '11px', padding: '8px' }}>⚡ Admin</button>
+                  <button type="button" onClick={() => { setLoginEmail('jose@construtorasilva.com'); setLoginPassword('senha123_criptografada'); }} className="btn btn-secondary" style={{ flex: 1, fontSize: '11px', padding: '8px' }}>⚡ Cliente</button>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">E-mail</label>
+                  <input id="login-email" type="email" className="form-control" placeholder="seu@email.com" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} autoFocus required />
+                </div>
+                <div className="form-group" style={{ marginBottom: '24px' }}>
+                  <label className="form-label">Senha</label>
+                  <input id="login-password" type="password" className="form-control" placeholder="••••••••" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} required />
+                </div>
+                <button id="login-submit-btn" type="submit" className="btn btn-primary" style={{ width: '100%', padding: '14px' }} disabled={loading}>
+                  {loading ? 'Entrando...' : 'Entrar no Painel'}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="app-container">
